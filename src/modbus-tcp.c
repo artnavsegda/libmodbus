@@ -225,7 +225,6 @@ static int _modbus_tcp_set_ipv4_options(int s)
     /* If the OS does not offer SOCK_NONBLOCK, fall back to setting FIONBIO to
      * make sockets non-blocking */
     /* Do not care about the return value, this is optional */
-    option = 1;
 #if !defined(SOCK_NONBLOCK) && defined(FIONBIO)
 #ifdef OS_WIN32
     {
@@ -234,6 +233,7 @@ static int _modbus_tcp_set_ipv4_options(int s)
         ioctlsocket(s, FIONBIO, &loption);
     }
 #else
+    option = 1;
     ioctl(s, FIONBIO, &option);
 #endif
 #endif
@@ -661,8 +661,6 @@ int modbus_tcp_accept(modbus_t *ctx, int *s)
 #endif
 
     if (ctx->s == -1) {
-        close(*s);
-        *s = -1;
         return -1;
     }
 
@@ -691,9 +689,9 @@ int modbus_tcp_pi_accept(modbus_t *ctx, int *s)
 #else
     ctx->s = accept(*s, (struct sockaddr *)&addr, &addrlen);
 #endif
+
     if (ctx->s == -1) {
-        close(*s);
-        *s = -1;
+        return -1;
     }
 
     if (ctx->debug) {
@@ -854,7 +852,7 @@ modbus_t* modbus_new_tcp_pi(const char *node, const char *service)
 
     if (node == NULL) {
         /* The node argument can be empty to indicate any hosts */
-        ctx_tcp_pi->node[0] = '0';
+        ctx_tcp_pi->node[0] = 0;
     } else {
         dest_size = sizeof(char) * _MODBUS_TCP_PI_NODE_LENGTH;
         ret_size = strlcpy(ctx_tcp_pi->node, node, dest_size);
